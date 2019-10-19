@@ -2,58 +2,36 @@
 <html lang="ja" dir="ltr">
   <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="style.css">
-    <title></title>
+
+    <!-- SEO -->
+    <title>EMOVE</title>
+
+    <!-- css -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+
   </head>
   <body>
-    <img src="emove.png" style="width: 100%;">
-    <div class="content">
-    <h2>登録フォーム</h2>
-    <hr>
+    <h1>EMOVE</h1>
     <form action="file:///Users/nodaryohei/Desktop/entry%20movie/index.html" method="post">
-    <p>Twitter ID(@から始まる)：
-    <input type="text" name="TwitterID" required></p>
-    <p>年齢：
-    <input type="number" name="age" min="0" max="100" step="1">歳</p>
-    <p>性別：
-      <input id="male" type="radio" name="sex" value="male"><label for="male">男性</label>
-      <input id="female" type="radio" name="sex" value="female"><label for="female">女性</label>
-    </p>
-      <hr>
+      <h3>名前</h3>
+        <input type="text" name="name" required>
+
+      <h3>Twitter ID</h3>
+        <input type="text"name="twitter"required>
+
+      <h3>年齢</h3>
+      <input type="number"name="age"min="0"max="100"step="20">
+
+      <h3>性別</h3>
+      <div class="cp_ipradio">
+        <input id="male"type="radio"name="sex"value="male"checked><label for="male"id="male_label">male</label>
+        <input id="female"type="radio"name="sex"value="female"><label for="female"id="female_label">female</label>
+      </div>
+
       <div class="under">
-        <h2><a href=""><input type="submit" value="submit"></a></h2>
+        <h2><a href=""><input type="submit"value="CHECK IN"></a></h2>
       </div>
     </form>
-    </div>
   </body>
 </html>
-
-
-<script type="text/javascript">
-
-$('form').submit(function(){
-  var data = $('form').serializeArray();  // ①form to json
-
-  data = parseJson(data); // ②json to 欲しい形
-  // ③送信
-  $.ajax({
-    url:           '',  //サーバURL
-    type:          'post',
-    dataType:      'json',
-    contentType:   'application/json',
-    scriptCharset: 'utf-8',
-    data:          JSON.stringify(data)
-  })
-})
-
-var parseJson = function(data) {
-  var returnJson = {};
-  for (idx = 0; idx < data.length; idx++) {
-    returnJson[data[idx].name] = data[idx].value
-  }
-  return returnJson;
-}
-
-
-
-</script>
