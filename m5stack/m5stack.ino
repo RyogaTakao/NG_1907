@@ -1,7 +1,6 @@
 #include <M5Stack.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include "arduinoFFT.h"
 
 //各種設定
 //ネットワーク設定
@@ -18,18 +17,16 @@
 //GPIO設定
 #define PIN_INPUT 36
 
-//FFT設定
-//FFT_SAMPLES は 2^n でなければなりません。
-#define FFT_SAMPLES 16
-#define FFT_SAMPLING_FREQUENCY 4
+//波形データ用リングバッファの大きさです。
+#define WAVE_BUFFER 1024
 
-//
-#define WAVE_BUFFER 128
+//測定用の定数
+#define PEAK_THRESHOLD 0.99 //リングバッファの最大値×これ　より大きい信号を新たなピークとします。
+#define MIN_PEAK_DELTA 300000 //これより短い周期のピークを破棄します。
 
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
 WiFiClient glb_wifi_client;
-arduinoFFT glb_fft;
 
 /*
   M5Stackの各種セットアップを行います。
@@ -42,6 +39,7 @@ void setup() {
   M5.begin();
 
   //スピーカーがうるさいので
+  //M5.Speaker.beep();
   dacWrite(25, 0); 
 
   //シリアル通信
@@ -53,9 +51,6 @@ void setup() {
 
   //心拍計
   pinMode(PIN_INPUT, INPUT);
-
-  //FFT
-  glb_fft = arduinoFFT();
 
   //Wi-Fi
   //connectAP();
@@ -117,109 +112,69 @@ bool connectTCP(void){
   return false;
 }
 
-/*
-  メインの繰り返し処理です。
-  PPDR (https://ppdr.softether.net/esp-fft-test) を基に改変しています。
-
-  @param なし [なし]: この関数に引数はありません。
-  @return なし [なし]: この関数は戻り値がありません。
-*/
-/*
-void loop() {
-  //1サンプルの間隔
-  const unsigned int sampling_period_us = round(1000000.0/FFT_SAMPLING_FREQUENCY);
-
-  //波形データ格納用
-  double real[FFT_SAMPLES], imaginary[FFT_SAMPLES];
-
-  //bpm
-  static unsigned int bpm = 120;
-
-  //サンプリング
-  for (unsigned int i=0; i < FFT_SAMPLES; i++) {
-    unsigned long before = micros();
-
-    real[i] = analogRead(PIN_INPUT);
-    imaginary[i] = 0;
-
-    while(micros() < (before + sampling_period_us));
-  }
-
-  //高速フーリエ変換を行い、時系列情報を周波数情報に変換します。
-  glb_fft.Windowing(real, FFT_SAMPLES, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-  glb_fft.Compute(real, imaginary, FFT_SAMPLES, FFT_FORWARD);
-  glb_fft.ComplexToMagnitude(real, imaginary, FFT_SAMPLES);
-
-  //最もエネルギーの大きい周波数を取り出す(Hz)
-  double peak = glb_fft.MajorPeak(real, FFT_SAMPLES, FFT_SAMPLING_FREQUENCY);
-
-  //BPMに変換
-  //前のBPMから突然2倍以上になった場合はノイズとして判断します
-  //if (peak * 60 > bpm * 2) {
-  //  bpm = peak * 60 / 2;
-  //} else {
-  //  bpm = peak * 60;
-  //}
-  bpm = peak * 60;
-
-  //画面
-  M5.Lcd.setCursor(1, 1);
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.printf("%3d BPM", bpm);
-
-  //送信
-  glb_wifi_client.printf("%d\n", bpm);
-}
-*/
 void loop(){
   unsigned int level = analogRead(PIN_INPUT);
   static unsigned int wave[WAVE_BUFFER] = {};
   static unsigned int index = 0;
   static unsigned long last_peak = 0;
-  static float bpm = 0;
-  unsigned int average = 0;
+  static float bpm = 65;
+  double correlation[WAVE_BUFFER] = {};
 
   M5.Lcd.setCursor(1, 1);
   M5.Lcd.printf("Input: %4d mV\n", level);
 
-  //バッファにためる
+  //リングバッファ的な
   if (index < WAVE_BUFFER) {
     wave[index++] = level;
   } else {
     index = 0;
   }
+  
+  //乗るしかない、このビッグウェーブに
+  if (level > wave_max(wave) * PEAK_THRESHOLD) {
+    unsigned long new_peak = micros();
+    unsigned int delta = new_peak - last_peak;
 
-  //
-  average = wave_average(wave);
-  M5.Lcd.printf("Average: %4d mV\n", average);
-
-  //ラップアラウンド防止
-  //unsigned どうしの減算のため結果が負になるとおかしくなります。
-  if (level > average) {
-    //乗るしかないでしょ、このビックウェーブに
-    if ((level - average) > 20) {
-      unsigned long new_peak = micros();
-      unsigned int delta = new_peak - last_peak;
-
-      if (delta > 200000) {
-        //頂上を2回とるの防止
-        bpm = 1000000.0 / delta * 60;
-        last_peak = new_peak;
-      }
+    //頂上を2回とってバグるの防止
+    if (delta > MIN_PEAK_DELTA) {
+      //マイクロ秒→BPM  
+      bpm = 1000000.0 / delta * 60;
+      last_peak = new_peak;
     }
   }
 
-  M5.Lcd.printf("BPM: %3f\n", bpm);
+  M5.Lcd.printf("B P M: %3.1f\n", bpm);
 
   Serial.printf("%d\n", level);
 }
 
-unsigned int wave_average(unsigned int *arr){
-  unsigned int sum = 0;
+unsigned int wave_max(unsigned int *arr){
+  unsigned int temp = 0;
 
   for (int i=0; i < WAVE_BUFFER; i++) {
-    sum += arr[i];
+    if (arr[i] > temp) {
+      temp = arr[i];
+    }
   }
 
-  return sum / WAVE_BUFFER;
+  return temp;
 }
+
+/*
+double corr(unsigned int *arr, int m) {
+  double ret = 0;
+
+  for (int i=0; i < WAVE_BUFFER; i++) {
+    int j = i - m;
+
+    if (j < 0) {
+      //rotation
+      j += WAVE_BUFFER;
+    }
+
+    ret += arr[i] * arr[j];
+  }
+
+  return ret / WAVE_BUFFER;
+}
+*/
