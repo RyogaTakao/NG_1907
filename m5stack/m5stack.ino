@@ -20,8 +20,8 @@
 
 //FFT設定
 //FFT_SAMPLES は 2^n でなければなりません。
-#define FFT_SAMPLES 256
-#define FFT_SAMPLING_FREQUENCY 50
+#define FFT_SAMPLES 16
+#define FFT_SAMPLING_FREQUENCY 4
 
 arduinoFFT FFT = arduinoFFT();
 
@@ -36,17 +36,22 @@ WiFiClient glb_wifi_client;
   @return なし [なし]: この関数は戻り値がありません。
 */
 void setup() {
+  //初期化
   M5.begin();
-  //dacWrite(25, 0); // ノイズ対策
 
+  //スピーカーがうるさいので
+  dacWrite(25, 0); 
+
+  //シリアル通信
   Serial.begin(BAUD_RATE);
-
   delay(500);
 
+  //心拍計
   pinMode(PIN_INPUT, INPUT);
 
-  connectAP();
-  connectTCP();
+  //Wi-Fi
+  //connectAP();
+  //connectTCP();
 
   Serial.printf("All system ready.\n");
 }
@@ -130,13 +135,13 @@ void loop() {
   double peak = FFT.MajorPeak(real, FFT_SAMPLES, FFT_SAMPLING_FREQUENCY);
 
   //BPMに変換
-  double bpm = peak * 60;
+  unsigned int bpm = peak * 60;
 
   //画面
   M5.Lcd.setCursor(1, 1);
   M5.Lcd.setTextSize(3);
-  M5.Lcd.printf("%.1lf BPM", bpm);
+  M5.Lcd.printf("%3d BPM", bpm);
 
   //送信
-  glb_wifi_client.printf("%d\n", int(round(bpm)));
+  glb_wifi_client.printf("%d\n", bpm);
 }
