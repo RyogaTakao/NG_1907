@@ -20,8 +20,8 @@
 
 //FFT設定
 //FFT_SAMPLES は 2^n でなければなりません。
-#define FFT_SAMPLES 32
-#define FFT_SAMPLING_FREQUENCY 8
+#define FFT_SAMPLES 16
+#define FFT_SAMPLING_FREQUENCY 4
 
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
@@ -52,8 +52,8 @@ void setup() {
   glb_fft = arduinoFFT();
 
   //Wi-Fi
-  //connectAP();
-  //connectTCP();
+  connectAP();
+  connectTCP();
 
   Serial.printf("All system ready.\n");
 }
@@ -148,11 +148,12 @@ void loop() {
 
   //BPMに変換
   //前のBPMから突然2倍以上になった場合はノイズとして判断します
-  if (peak * 60 > bpm * 2) {
-    bpm = peak * 60 / 2;
-  } else {
-    bpm = peak * 60;
-  }
+  //if (peak * 60 > bpm * 2) {
+  //  bpm = peak * 60 / 2;
+  //} else {
+  //  bpm = peak * 60;
+  //}
+  bpm = peak * 60;
 
   //画面
   M5.Lcd.setCursor(1, 1);
