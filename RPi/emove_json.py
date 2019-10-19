@@ -2,16 +2,14 @@ import json
 import requests
 
 JSON_FILE_PATH = '/home/pi/EMOVE/test_bpm.json'
-SEND_URL = ''
+SEND_URL = 'https://jphacks_noblesseoblige07.serveo.net/bpm'
 
-def save_bpm_json(userID, musicID, BPM):
-    dic = {
-        "userID": userID,
-        "musicID": musicID,
-        "BPM": BPM
-    }
-    a = open(JSON_FILE_PATH, 'w')
-    json.dump(dic, a)
+def send_bpm(userID, musicID, BPM):
+    #POSTパラメータは二つ目の引数に辞書で指定する
+    response = requests.post(
+        SEND_URL,
+        json.dumps({'userID': userID, 'musicID': musicID, 'BPM': BPM}),
+        headers={'Content-Type': 'application/json'})    
 
 def save_music_list_json():
     dic = {}
@@ -32,12 +30,11 @@ def send_json(path, url):
     res = requests.post(url, files=file, headers=headers)
 
 def main():
-    userID = '3120'
+    userID = '3125'
     musicID = '7654'
-    BPM = 65
+    BPM = 70
     #save_music_list_json()
-    save_bpm_json(userID, musicID, BPM)
-    send_json(JSON_FILE_PATH, SEND_URL)
+    send_bpm(userID, musicID, BPM)
 
 if __name__ == "__main__":
     main()
