@@ -1,6 +1,8 @@
 #include <M5Stack.h>
 #include <WiFi.h>
 #include <arduinoFFT.h>
+#include <FS.h>
+#include <SPIFFS.h>
 
 //  # 各種設定
 //  ## ネットワーク設定
@@ -37,6 +39,9 @@ void setup()
     M5.begin();
     dacWrite(25, 0);
 
+    //  画像描画
+    M5.Lcd.drawJpgFile(SD, "/EMOVE.jpg");
+
     //  心拍計
     pinMode(PIN_INPUT, INPUT);
     analogReadResolution(12);
@@ -50,6 +55,8 @@ void setup()
     //  WiFi
     connectAP();
     connectTCP();
+
+    M5.Lcd.fillScreen(TFT_BLACK);
 
     Serial.printf("All system ready.\n");
     newTime = millis();
@@ -148,6 +155,11 @@ void loop()
         displayMode = 1;
         btnChangeFlg = true;
     }
+    else if (M5.BtnC.isPressed())
+    {
+        displayMode = 2;
+        btnChangeFlg = true;
+    }
 
     //  ボタンによる画面切り替え
     if (btnChangeFlg == true)
@@ -157,12 +169,20 @@ void loop()
             M5.Lcd.fillScreen(TFT_BLACK);
             displayDraw = false;
         }
-        else
+        else if (displayMode == 1)
         {
             if (displayDraw == false)
             {
                 M5.Lcd.fillScreen(TFT_BLACK);
                 M5.Lcd.qrcode("http://www.m5stack.com");
+                displayDraw = true;
+            }
+        }
+        else if (displayMode == 2)
+        {
+            if (displayDraw == false)
+            {
+                M5.Lcd.drawJpgFile(SD, "/EMOVE.jpg");
                 displayDraw = true;
             }
         }
