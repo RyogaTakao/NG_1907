@@ -117,34 +117,57 @@ void loop(){
   static unsigned int wave[WAVE_BUFFER] = {};
   static unsigned int index = 0;
   static unsigned long last_peak = 0;
-  static float bpm = 65;
-  double correlation[WAVE_BUFFER] = {};
+  static float bpm = 0;
+  static float bpm_history[10] = {};
+  static unsigned int bpm_index = 0;
 
   M5.Lcd.setCursor(1, 1);
   M5.Lcd.printf("Input: %4d mV\n", level);
 
   //リングバッファ的な
-  if (index < WAVE_BUFFER) {
-    wave[index++] = level;
-  } else {
+  if (index >= WAVE_BUFFER) {
     index = 0;
   }
+  wave[index++] = level;
   
   //乗るしかない、このビッグウェーブに
   if (level > wave_max(wave) * PEAK_THRESHOLD) {
     unsigned long new_peak = micros();
-    unsigned int delta = new_peak - last_peak;
+    unsigned long delta = new_peak - last_peak;
 
     //頂上を2回とってバグるの防止
     if (delta > MIN_PEAK_DELTA) {
-      //マイクロ秒→BPM  
-      bpm = 1000000.0 / delta * 60;
+      //選ばれしデータ
+      if (bpm_index >= 10) {
+        bpm_index = 0;
+      }
+
       last_peak = new_peak;
+
+      //マイクロ秒→BPM 
+      bpm_history[bpm_index++] = 1000000.0 / delta * 60;
     }
   }
 
-  M5.Lcd.printf("B P M: %3.1f\n", bpm);
+  //メジアン
+  for (int i = 0; i < 10 - 1; i++) {
+    int j = i;
 
+    for (int k = i; k < 10; k++) {
+      if (bpm_history[k] < bpm_history[j]) {
+        j = k;
+      }
+    }
+
+    if (i < j) {
+      double v = bpm_history[i];
+      bpm_history[i] = bpm_history[j];
+      bpm_history[j] = v;
+    }
+  }
+
+  M5.Lcd.printf("B P M: %3.1f\n", bpm_history[5]);
+  glb_wifi_client.printf("%.0lf\n", round(bpm_history[5]));
   Serial.printf("%d\n", level);
 }
 
