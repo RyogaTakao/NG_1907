@@ -1,6 +1,7 @@
 #include <M5Stack.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include "arduinoFFT.h"
 
 //各種設定
 //ネットワーク設定
@@ -14,16 +15,15 @@
 //シリアル通信設定
 #define BAUD_RATE 115200
 
-//LCD設定
-#define LCD_WIDTH 320
-#define LCD_HEIGHT 240
-#define DOTS_DIV 30
-#define GREY 0x7BEF
-#define REDRAW 20
-
 //GPIO設定
 #define PIN_INPUT 36
-#define THRESHOLD 550   // Adjust this number to avoid noise when idle
+
+//FFT設定
+//FFT_SAMPLES は 2^n でなければなりません。
+#define FFT_SAMPLES 256
+#define FFT_SAMPLING_FREQUENCY 50
+
+arduinoFFT FFT = arduinoFFT();
 
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
@@ -37,7 +37,7 @@ WiFiClient glb_wifi_client;
 */
 void setup() {
   M5.begin();
-  //dacWrite(25, 0); // Speaker OFF
+  //dacWrite(25, 0); // ノイズ対策
 
   Serial.begin(BAUD_RATE);
 
@@ -45,8 +45,8 @@ void setup() {
 
   pinMode(PIN_INPUT, INPUT);
 
-  //connectAP();
-  //connectTCP();
+  connectAP();
+  connectTCP();
 
   Serial.printf("All system ready.\n");
 }
@@ -105,10 +105,38 @@ bool connectTCP(void){
 }
 
 void loop() {
-  uint16_t heart = analogRead(PIN_INPUT);
-  glb_wifi_client.printf("%d\n", heart);
+  //1サンプルの間隔
+  const unsigned int sampling_period_us = round(1000000*(1.0/FFT_SAMPLING_FREQUENCY));
+
+  //波形データ格納用
+  double real[FFT_SAMPLES], imaginary[FFT_SAMPLES];
+
+  //サンプリング
+  for (unsigned int i=0; i < FFT_SAMPLES; i++) {
+    unsigned long microseconds = micros();
+
+    real[i] = analogRead(PIN_INPUT);
+    imaginary[i] = 0;
+
+    while(micros() < (microseconds + sampling_period_us));
+  }
+
+  //FFT
+  FFT.Windowing(real, FFT_SAMPLES, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+  FFT.Compute(real, imaginary, FFT_SAMPLES, FFT_FORWARD);
+  FFT.ComplexToMagnitude(real, imaginary, FFT_SAMPLES);
+
+  //最もエネルギーの大きい周波数を取り出す(Hz)
+  double peak = FFT.MajorPeak(real, FFT_SAMPLES, FFT_SAMPLING_FREQUENCY);
+
+  //BPMに変換
+  double bpm = peak * 60;
+
+  //画面
   M5.Lcd.setCursor(1, 1);
   M5.Lcd.setTextSize(3);
-  M5.Lcd.printf("Raw Input: %d", heart);
-  delay(10);
+  M5.Lcd.printf("%.1lf BPM", bpm);
+
+  //送信
+  glb_wifi_client.printf("%d\n", int(round(bpm)));
 }
