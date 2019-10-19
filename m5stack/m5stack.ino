@@ -23,6 +23,9 @@
 #define FFT_SAMPLES 16
 #define FFT_SAMPLING_FREQUENCY 4
 
+//
+#define WAVE_BUFFER 128
+
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
 WiFiClient glb_wifi_client;
@@ -45,6 +48,9 @@ void setup() {
   Serial.begin(BAUD_RATE);
   delay(500);
 
+  //LCD
+  M5.Lcd.setTextSize(3);
+
   //心拍計
   pinMode(PIN_INPUT, INPUT);
 
@@ -52,8 +58,8 @@ void setup() {
   glb_fft = arduinoFFT();
 
   //Wi-Fi
-  connectAP();
-  connectTCP();
+  //connectAP();
+  //connectTCP();
 
   Serial.printf("All system ready.\n");
 }
@@ -118,6 +124,7 @@ bool connectTCP(void){
   @param なし [なし]: この関数に引数はありません。
   @return なし [なし]: この関数は戻り値がありません。
 */
+/*
 void loop() {
   //1サンプルの間隔
   const unsigned int sampling_period_us = round(1000000.0/FFT_SAMPLING_FREQUENCY);
@@ -162,4 +169,57 @@ void loop() {
 
   //送信
   glb_wifi_client.printf("%d\n", bpm);
+}
+*/
+void loop(){
+  unsigned int level = analogRead(PIN_INPUT);
+  static unsigned int wave[WAVE_BUFFER] = {};
+  static unsigned int index = 0;
+  static unsigned long last_peak = 0;
+  static float bpm = 0;
+  unsigned int average = 0;
+
+  M5.Lcd.setCursor(1, 1);
+  M5.Lcd.printf("Input: %4d mV\n", level);
+
+  //バッファにためる
+  if (index < WAVE_BUFFER) {
+    wave[index++] = level;
+  } else {
+    index = 0;
+  }
+
+  //
+  average = wave_average(wave);
+  M5.Lcd.printf("Average: %4d mV\n", average);
+
+  //ラップアラウンド防止
+  //unsigned どうしの減算のため結果が負になるとおかしくなります。
+  if (level > average) {
+    //乗るしかないでしょ、このビックウェーブに
+    if ((level - average) > 20) {
+      unsigned long new_peak = micros();
+      unsigned int delta = new_peak - last_peak;
+
+      if (delta > 200000) {
+        //頂上を2回とるの防止
+        bpm = 1000000.0 / delta * 60;
+        last_peak = new_peak;
+      }
+    }
+  }
+
+  M5.Lcd.printf("BPM: %3f\n", bpm);
+
+  Serial.printf("%d\n", level);
+}
+
+unsigned int wave_average(unsigned int *arr){
+  unsigned int sum = 0;
+
+  for (int i=0; i < WAVE_BUFFER; i++) {
+    sum += arr[i];
+  }
+
+  return sum / WAVE_BUFFER;
 }
