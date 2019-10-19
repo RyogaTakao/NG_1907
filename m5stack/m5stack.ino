@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 
 //各種設定
+//ネットワーク設定
 //セキュリティもクソもないです。
 #define SSID "NG1907"
 #define PASSWORD "Shikishima"
@@ -10,7 +11,19 @@
 #define SRV_PORT 12345
 #define CONNECTION_WAIT 1000
 
+//シリアル通信設定
 #define BAUD_RATE 115200
+
+//LCD設定
+#define LCD_WIDTH 320
+#define LCD_HEIGHT 240
+#define DOTS_DIV 30
+#define GREY 0x7BEF
+#define REDRAW 20
+
+//GPIO設定
+#define PIN_INPUT 36
+#define THRESHOLD 550   // Adjust this number to avoid noise when idle
 
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
@@ -24,13 +37,18 @@ WiFiClient glb_wifi_client;
 */
 void setup() {
   M5.begin();
+  //dacWrite(25, 0); // Speaker OFF
 
   Serial.begin(BAUD_RATE);
-  delay(500);
-  Serial.printf("\nM5 ready!\n");
 
-  connectAP();
-  connectTCP();
+  delay(500);
+
+  pinMode(PIN_INPUT, INPUT);
+
+  //connectAP();
+  //connectTCP();
+
+  Serial.printf("All system ready.\n");
 }
 
 /*
@@ -41,9 +59,9 @@ void setup() {
 */
 bool connectAP(void) {
   //設定
-  unsigned int patience = 50;
+  unsigned int patience = 30;
 
-  Serial.printf("Trying to connect to AP...\n");
+  Serial.printf("Trying to connect to AP");
 
   //接続
   WiFi.begin(SSID, PASSWORD);
@@ -69,9 +87,9 @@ bool connectAP(void) {
 */
 bool connectTCP(void){
   //設定
-  unsigned int patience = 50;
+  unsigned int patience = 30;
 
-  Serial.printf("Trying to connect to server...\n");
+  Serial.printf("Trying to connect to server");
   while (patience--) {
     if (glb_wifi_client.connect(SRV_IP_ADDR, SRV_PORT)) {
       Serial.printf("TCP connection established.\n");
@@ -87,7 +105,10 @@ bool connectTCP(void){
 }
 
 void loop() {
-  static unsigned int count = 0;
-  glb_wifi_client.printf("%d\n", count++);
-  delay(1000);
+  uint16_t heart = analogRead(PIN_INPUT);
+  glb_wifi_client.printf("%d\n", heart);
+  M5.Lcd.setCursor(1, 1);
+  M5.Lcd.setTextSize(3);
+  M5.Lcd.printf("Raw Input: %d", heart);
+  delay(10);
 }
