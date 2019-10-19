@@ -18,7 +18,7 @@
 #define PIN_INPUT 36
 
 //波形データ用リングバッファの大きさです。
-#define WAVE_BUFFER 1024
+#define WAVE_BUFFER 128
 
 //測定用の定数
 #define PEAK_THRESHOLD 0.99 //リングバッファの最大値×これ　より大きい信号を新たなピークとします。
@@ -131,7 +131,8 @@ void loop(){
   wave[index++] = level;
   
   //乗るしかない、このビッグウェーブに
-  if (level > wave_max(wave) * PEAK_THRESHOLD) {
+  const unsigned int wall = wave_max(wave) * PEAK_THRESHOLD;
+  if (wave[index] > wall) {
     unsigned long new_peak = micros();
     unsigned long delta = new_peak - last_peak;
 
@@ -168,7 +169,7 @@ void loop(){
 
   M5.Lcd.printf("B P M: %3.1f\n", bpm_history[5]);
   glb_wifi_client.printf("%.0lf\n", round(bpm_history[5]));
-  Serial.printf("%d\n", level);
+  Serial.printf("%d\n", wave[index]);
 }
 
 unsigned int wave_max(unsigned int *arr){
