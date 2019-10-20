@@ -7,6 +7,7 @@ const char *SSID = "NG1907";
 const char *PSK = "Shikishima";
 const char *SRV_IP = "192.168.137.42";
 uint16_t SRV_PORT = 12345;
+uint16_t CLIENT_PORT = 12345;
 uint32_t CONNECTION_WAIT = 1000;
 
 //  ## シリアル通信設定
@@ -25,14 +26,16 @@ uint32_t CONNECTION_WAIT = 1000;
 //  ## 色
 const uint16_t FORECOLOR = M5.Lcd.color565(252,120,177);
 
+//　## ユーザー
+#define USER_ID_LENGTH 128
+char user_id[USER_ID_LENGTH] = {};
+char twitter_id[USER_ID_LENGTH] = {};
+
 bool btnChangeFlg = false;
 uint8_t displayMode = 0; //  0: BPM  1: QR
 
-
 WiFiClient glb_wifi_client;
-WiFiServer glb_wifi_server(12345);
-
-char user_id[128] = {};
+WiFiServer glb_wifi_server(CLIENT_PORT);
 
 /*
   M5Stackの各種セットアップを行います。
@@ -72,7 +75,7 @@ void setup()
     if (userid_file) {
         int c = 0;
         while (userid_file.available()) {
-            if (c >= 128) break;
+            if (c++ >= USER_ID_LENGTH) break;
             user_id[c++] = userid_file.read();
         }
     }
@@ -146,6 +149,12 @@ bool connectTCP(void)
     return false;
 }
 
+/*
+    メインループです。
+
+    @param なし [なし]: この関数に引数はありません。
+    @return なし [なし]: この関数は戻り値がありません。
+*/
 void loop()
 {
     unsigned int level = analogRead(PIN_INPUT);
@@ -211,10 +220,16 @@ void loop()
     // Wi-Fi 受信
     WiFiClient client = glb_wifi_server.available();
     if (client) {
+        int c = 0;
         String concat = "";
         while (client.connected()) {
             if (client.available()) {
-                concat += client.read();
+                char ch = client.read();
+                concat += ch;
+
+                if (c++ < USER_ID_LENGTH) {
+                    twitter_id[c] = ch;
+                }
             }
         }
         Serial.printf(concat.c_str());
@@ -249,7 +264,7 @@ void loop()
         else if (displayMode == 1)
         {
                 M5.Lcd.fillScreen(TFT_WHITE);
-                M5.Lcd.qrcode(user_id);
+                M5.Lcd.qrcode(twitter_id);
         }
         else if (displayMode == 2)
         {
@@ -276,6 +291,12 @@ void loop()
    Serial.printf("%d\n", wave[index]); //debug
 }
 
+/*
+    波形データ中の最大値を返します。
+
+    @param *arr (unsigned int): 波形データ
+    @return temp (unsigned int): 波形データの最大値
+*/
 unsigned int wave_max(unsigned int *arr)
 {
     unsigned int temp = 0;
