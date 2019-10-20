@@ -29,11 +29,13 @@ const uint16_t FORECOLOR = M5.Lcd.color565(252,120,177);
 //　## ユーザー
 #define USER_ID_LENGTH 128
 char user_id[USER_ID_LENGTH] = {};
-char twitter_id[USER_ID_LENGTH] = {};
+char url[USER_ID_LENGTH] = {};
 
+//  ## ボタンとディスプレイ
 bool btnChangeFlg = false;
 uint8_t displayMode = 0; //  0: BPM  1: QR
 
+//  ## Wi-Fi
 WiFiClient glb_wifi_client;
 WiFiServer glb_wifi_server(CLIENT_PORT);
 
@@ -228,7 +230,7 @@ void loop()
                 concat += ch;
 
                 if (c++ < USER_ID_LENGTH) {
-                    twitter_id[c] = ch;
+                    url[c] = ch;
                 }
             }
         }
@@ -264,7 +266,7 @@ void loop()
         else if (displayMode == 1)
         {
                 M5.Lcd.fillScreen(TFT_WHITE);
-                M5.Lcd.qrcode(twitter_id);
+                M5.Lcd.qrcode(url);
         }
         else if (displayMode == 2)
         {
