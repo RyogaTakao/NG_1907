@@ -16,7 +16,7 @@ uint32_t CONNECTION_WAIT = 1000;
 #define PIN_INPUT 36
 
 //  ## 波形データ
-#define WAVE_BUFFER 1024
+#define WAVE_BUFFER 128
 
 //  ## 測定用定数
 #define PEAK_THRESHOLD 0.99   //リングバッファの最大値×これ　より大きい信号を新たなピークとします。
@@ -129,6 +129,7 @@ void loop()
     static unsigned int wave[WAVE_BUFFER] = {};
     static unsigned int index = 0;
     static unsigned long last_peak = 0;
+    static float bpm = 0;
     static float bpm_history[10] = {};
     static unsigned int bpm_index = 0;
     static unsigned int count = 0;
@@ -221,33 +222,34 @@ void loop()
         btnChangeFlg = false;
     }
 
-    if (displayMode == 0)
+    if (displayMode == 0 && bpm_history[5] != bpm)
     {
+        bpm = bpm_history[5];
+
         M5.Lcd.fillEllipse(160, 120, 90, 90, forecolor);
         M5.Lcd.setTextColor(TFT_WHITE, forecolor);
         M5.Lcd.setCursor(100, 90);
         M5.Lcd.setTextSize(8);
         M5.Lcd.printf("%03.0f", bpm_history[5]);
+
+        //  通信エラー対策
+        /*
+        if (glb_wifi_client.connected() == 0)
+        {
+            glb_wifi_client.stop();
+            connectTCP();
+        }
+        if (count < 999){
+            count++;
+        }
+        else{
+            glb_wifi_client.printf("%.0f\n", bpm_n);
+            count = 0;
+        }
+        */
     }
 
     Serial.printf("%f\n", wave[index]);
-
-    //  通信エラー対策
-    /*
-    if (glb_wifi_client.connected() == 0)
-    {
-        glb_wifi_client.stop();
-        connectTCP();
-    }
-    if (count < 999){
-        count++;
-    }
-    else{
-        glb_wifi_client.printf("%.0f\n", bpm_n);
-        count = 0;
-    }
-    */
-
 }
 
 unsigned int wave_max(unsigned int *arr)
