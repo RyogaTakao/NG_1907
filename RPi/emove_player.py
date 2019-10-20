@@ -18,7 +18,11 @@ firebase_admin.initialize_app(cred)
 OUTRO_TIME = 1
 
 # mp3ファイル格納ディレクトリ
+<<<<<<< HEAD
+MUSIC_PATH = "~/Music/"
+=======
 MUSIC_PATH = "/jphacks/music/"
+>>>>>>> f9158feb2ade9db14ecfdc952eabf8720f959efb
 
 # mp3予備ファイルパス
 
