@@ -11,7 +11,7 @@ while count < 50:
     if count >= 45:
         i += 2
 
-    test1.append(i)
+    if count != 22 and count != 30 and count != 31 and count != 32 and count != 49:test1.append([count, i])
     count += 1
 
 print(test1)
@@ -19,8 +19,8 @@ print("\n")
 
 test2 = []
 i = 90
-count = 0
-while count < 50:
+count = 5
+while count < 20:
     if count > 8 and count < 22:
         i += 1 
 
@@ -30,20 +30,85 @@ while count < 50:
     if count >= 40:
         i += 1
 
-    test2.append(i)
+    test2.append([count, i])
     count += 1
 
-print(test2)
-print("\n")
+# print(test2)
+# print("\n")
+
+# データサイズ調整
+def Adjustment(listA, listB):
+    small = listA[0][0] - listB[0][0]
+    big = listA[len(listA) - 1][0] - listB[len(listB) - 1][0]
+
+    if small < 0: listA = listA[abs(small):]
+    else: listB = listB[abs(small):]
+
+    if big < 0: listB = listB[:len(listA)]
+    else: listA = listA[:len(listB)]
+
+    return listA, listB
+
+import math
+
+# 補間値
+def InterpolatedValue(dataA, dataB):
+    return math.floor((dataB[1] - dataA[1]) / (dataB[0] - dataA[0]))
+
+# データの穴埋め
+def HoleFilling(listData):
+    # 本来あるべき長さがあるか
+    resultData = []
+    print(listData[0][0])
+    length = listData[len(listData) - 1][0] - listData[0][0]
+    startLength = len(listData)
+    if startLength < length:
+        ID = listData[0][0]
+        count = 0
+        while ID < listData[len(listData) - 1][0]:
+            if listData[count][0] == ID:
+                resultData.append(listData[count])
+                count += 1
+            else:
+                resultData.append([ID, listData[count + ID - listData[count][0]][1] + InterpolatedValue(listData[count], listData[count + 1])])
+
+            ID += 1
+  
+    return resultData
+
+print("HoleFilling")
+print(HoleFilling(test1))                
 
 
+# マッチング用リスト追加関数
+def AscendingQuickSort(listData):
 
+    if len(listData) < 2: 
+        return listData
+    head = listData[0][1]
+    left = []
+    middle = []
+    right = []
+
+    for data in listData:
+        if data[1] < head: left.append(data)
+        elif data[1] == head: middle.append(data)
+        else: right.append(data)
+    
+    return AscendingQuickSort(left) + middle + AscendingQuickSort(right)
+
+def sumData(listData):
+    sumData = 0
+    for data in listData:
+        sumData += data[1]
+    return sumData
 
 # 基準値(小)を抽出
 def GetStandardMin(listData, i):
-    listSort = sorted(listData)
+    listSort = AscendingQuickSort(listData)
+    # print(listSort)
     minList = listSort[:i]
-    return sum(minList) / len(minList)
+    return sumData(minList) / len(minList)
 
 ### マッチング用関数 
 
@@ -53,13 +118,17 @@ def Normalization(listData):
     standard = GetStandardMin(listData, 5)
     normalizationList = []
     while i < len(listData):
-        normalizationList.append(listData[i] - standard)
+        listData[i][1] = listData[i][1] - standard
+        normalizationList.append(listData[i])
         i += 1
     
     return normalizationList
 
 # マッチング用 値の差を抽出する関数
 def HumanMatchingCheck(listA, listB):
+    listA, listB = Adjustment(listA, listB)
+    print(listA)
+    print(listB)
     normalizationListA = Normalization(listA)
     normalizationListB = Normalization(listB)
     if len(normalizationListA) > len(normalizationListB):
@@ -69,7 +138,7 @@ def HumanMatchingCheck(listA, listB):
 
     i = 0
     while i < length:
-        result = abs(sum(normalizationListA) - sum(normalizationListB))
+        result = abs(sumData(normalizationListA) - sumData(normalizationListB))
         i += 1
 
     return result
@@ -110,17 +179,18 @@ def Humanmatching(idA, listA, listB): # 変更時listBを引数から削除す�
     # idと心拍数の差を保存する配列
     matchingList = []
 
-    # テスト用
+    # # テスト用
     # idc = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # di = [5, 4, 4, 8, 3, 1, 5, 0, 0, 1]
 
     while i < length:
-        listB = listB
+        # listB = listB
         idB = 100
+
         # 心拍数の差を計算
         difference = HumanMatchingCheck(listA, listB)
 
-        # テスト用
+        # # テスト用
         # difference = di[i]
         # idB = idc[i]
         
@@ -136,4 +206,5 @@ def Humanmatching(idA, listA, listB): # 変更時listBを引数から削除す�
 # print(HumanMatchingCheck(test1, test2))
 # print("\n")
 
-# print(Humanmatching(test1, test2))
+# print(Humanmatching(200, test1, test2))
+

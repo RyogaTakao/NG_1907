@@ -1,0 +1,121 @@
+body {
+  margin: 0;
+  width: 100%;
+  height: 100vh;
+  font-family: "Exo", sans-serif;
+  color: #fff;
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+
+  h1{
+    display: inline-block;
+    color: rgba(0,0,0,0);
+    user-select: none;
+    width: 70vw;
+    height: 27vw;
+    margin: 5vh 0 0 15vw;
+    background-image: url("../img/w_logo.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+  h3{
+    font-size: 5vw;
+    line-height: 5vw;
+    text-align: center;
+    margin: 4vh 0 0;
+  }
+
+/* --- form --- */
+  form{
+    width:80%;
+    margin-left: 10%;
+  }
+
+
+/* --- check box --- */
+  .cp_ipradio {
+    width: 90%;
+    margin: 1vh auto 2vh;
+    text-align: center;
+    font-size: 5vw;
+  }
+  .cp_ipradio input[type='radio'] {
+    position: absolute;
+    z-index: -1;
+    opacity: 0;
+  }
+  .cp_ipradio label {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    padding: 0 2vw;
+    margin: 0 1vw;
+    text-align: center;
+  }
+  .cp_ipradio label::before {
+    position: absolute;
+    z-index: -1;
+    display: block;
+    width: 5vw;
+    height: 5vw;
+    content: ' ';
+    border-radius: 5vw;
+  }
+  .cp_ipradio input[type='radio']:checked + #female_label::before {
+    width: 100%;
+    height: 100%;
+    background: #da3c41;
+    content: ' ';
+    text-align: center;
+    margin-left: -2vw;
+  }
+  .cp_ipradio input[type='radio']:checked + #male_label::before {
+    width: 100%;
+    height: 100%;
+    background: #3440da;
+    margin-left: -2vw;
+  }
+  .cp_ipradio label, .cp_ipradio label::before {
+    -webkit-transition: 0.25s all ease;
+    transition: 0.25s all ease;
+  }
+
+
+/* --- text box --- */
+  input[type=text],input[type=number] {
+    padding: 0 5%;
+    width: 90%;
+    margin: 0vw 0 2vh;
+    border: 1px solid white;
+    font-size: 5vw;
+    background-color: rgba(255,255,255,.1);
+    color: white;
+    text-align: center;
+  }
+
+/* --- button --- */
+  input[type=submit]{
+    width:50%;
+    margin: 5vh 0 0 25%;
+    font-size: 5vw;
+    line-height: 7vw;
+    height: 7vw;
+    border-radius: 3.5vw;
+    background: #ffffff;
+  }

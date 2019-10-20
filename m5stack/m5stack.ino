@@ -1,7 +1,6 @@
 #include <M5Stack.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include "arduinoFFT.h"
 
 //各種設定
 //ネットワーク設定
@@ -18,15 +17,16 @@
 //GPIO設定
 #define PIN_INPUT 36
 
-//FFT設定
-//FFT_SAMPLES は 2^n でなければなりません。
-#define FFT_SAMPLES 32
-#define FFT_SAMPLING_FREQUENCY 8
+//波形データ用リングバッファの大きさです。
+#define WAVE_BUFFER 128
+
+//測定用の定数
+#define PEAK_THRESHOLD 0.99 //リングバッファの最大値×これ　より大きい信号を新たなピークとします。
+#define MIN_PEAK_DELTA 300000 //これより短い周期のピークを破棄します。
 
 //みんな大好きグローバル変数
 //接頭辞 glb_ をつけてください。
 WiFiClient glb_wifi_client;
-arduinoFFT glb_fft;
 
 /*
   M5Stackの各種セットアップを行います。
@@ -39,17 +39,18 @@ void setup() {
   M5.begin();
 
   //スピーカーがうるさいので
+  //M5.Speaker.beep();
   dacWrite(25, 0); 
 
   //シリアル通信
   Serial.begin(BAUD_RATE);
   delay(500);
 
+  //LCD
+  M5.Lcd.setTextSize(3);
+
   //心拍計
   pinMode(PIN_INPUT, INPUT);
-
-  //FFT
-  glb_fft = arduinoFFT();
 
   //Wi-Fi
   //connectAP();
@@ -111,54 +112,93 @@ bool connectTCP(void){
   return false;
 }
 
-/*
-  メインの繰り返し処理です。
-  PPDR (https://ppdr.softether.net/esp-fft-test) を基に改変しています。
+void loop(){
+  unsigned int level = analogRead(PIN_INPUT);
+  static unsigned int wave[WAVE_BUFFER] = {};
+  static unsigned int index = 0;
+  static unsigned long last_peak = 0;
+  static float bpm = 0;
+  static float bpm_history[10] = {};
+  static unsigned int bpm_index = 0;
 
-  @param なし [なし]: この関数に引数はありません。
-  @return なし [なし]: この関数は戻り値がありません。
-*/
-void loop() {
-  //1サンプルの間隔
-  const unsigned int sampling_period_us = round(1000000.0/FFT_SAMPLING_FREQUENCY);
-
-  //波形データ格納用
-  double real[FFT_SAMPLES], imaginary[FFT_SAMPLES];
-
-  //bpm
-  static unsigned int bpm = 120;
-
-  //サンプリング
-  for (unsigned int i=0; i < FFT_SAMPLES; i++) {
-    unsigned long before = micros();
-
-    real[i] = analogRead(PIN_INPUT);
-    imaginary[i] = 0;
-
-    while(micros() < (before + sampling_period_us));
-  }
-
-  //高速フーリエ変換を行い、時系列情報を周波数情報に変換します。
-  glb_fft.Windowing(real, FFT_SAMPLES, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-  glb_fft.Compute(real, imaginary, FFT_SAMPLES, FFT_FORWARD);
-  glb_fft.ComplexToMagnitude(real, imaginary, FFT_SAMPLES);
-
-  //最もエネルギーの大きい周波数を取り出す(Hz)
-  double peak = glb_fft.MajorPeak(real, FFT_SAMPLES, FFT_SAMPLING_FREQUENCY);
-
-  //BPMに変換
-  //前のBPMから突然2倍以上になった場合はノイズとして判断します
-  if (peak * 60 > bpm * 2) {
-    bpm = peak * 60 / 2;
-  } else {
-    bpm = peak * 60;
-  }
-
-  //画面
   M5.Lcd.setCursor(1, 1);
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.printf("%3d BPM", bpm);
+  M5.Lcd.printf("Input: %4d mV\n", level);
 
-  //送信
-  glb_wifi_client.printf("%d\n", bpm);
+  //リングバッファ的な
+  if (index >= WAVE_BUFFER) {
+    index = 0;
+  }
+  wave[index++] = level;
+  
+  //乗るしかない、このビッグウェーブに
+  const unsigned int wall = wave_max(wave) * PEAK_THRESHOLD;
+  if (wave[index] > wall) {
+    unsigned long new_peak = micros();
+    unsigned long delta = new_peak - last_peak;
+
+    //頂上を2回とってバグるの防止
+    if (delta > MIN_PEAK_DELTA) {
+      //選ばれしデータ
+      if (bpm_index >= 10) {
+        bpm_index = 0;
+      }
+
+      last_peak = new_peak;
+
+      //マイクロ秒→BPM 
+      bpm_history[bpm_index++] = 1000000.0 / delta * 60;
+    }
+  }
+
+  //メジアン
+  for (int i = 0; i < 10 - 1; i++) {
+    int j = i;
+
+    for (int k = i; k < 10; k++) {
+      if (bpm_history[k] < bpm_history[j]) {
+        j = k;
+      }
+    }
+
+    if (i < j) {
+      double v = bpm_history[i];
+      bpm_history[i] = bpm_history[j];
+      bpm_history[j] = v;
+    }
+  }
+
+  M5.Lcd.printf("B P M: %3.1f\n", bpm_history[5]);
+  glb_wifi_client.printf("%.0lf\n", round(bpm_history[5]));
+  Serial.printf("%d\n", wave[index]);
 }
+
+unsigned int wave_max(unsigned int *arr){
+  unsigned int temp = 0;
+
+  for (int i=0; i < WAVE_BUFFER; i++) {
+    if (arr[i] > temp) {
+      temp = arr[i];
+    }
+  }
+
+  return temp;
+}
+
+/*
+double corr(unsigned int *arr, int m) {
+  double ret = 0;
+
+  for (int i=0; i < WAVE_BUFFER; i++) {
+    int j = i - m;
+
+    if (j < 0) {
+      //rotation
+      j += WAVE_BUFFER;
+    }
+
+    ret += arr[i] * arr[j];
+  }
+
+  return ret / WAVE_BUFFER;
+}
+*/
