@@ -23,12 +23,16 @@ uint32_t CONNECTION_WAIT = 1000;
 #define MIN_PEAK_DELTA 300000 //これより短い周期のピークを破棄します。
 
 //  ## 色
-uint16_t forecolor = M5.Lcd.color565(252,120,177);
+const uint16_t FORECOLOR = M5.Lcd.color565(252,120,177);
 
 bool btnChangeFlg = false;
 uint8_t displayMode = 0; //  0: BPM  1: QR
 
+
 WiFiClient glb_wifi_client;
+WiFiServer glb_wifi_server(12345);
+
+char user_id[128] = {};
 
 /*
   M5Stackの各種セットアップを行います。
@@ -52,8 +56,20 @@ void setup()
     pinMode(PIN_INPUT, INPUT);
 
     //  WiFi
-    //connectAP();
-    //connectTCP();
+    connectAP();
+    Serial.println(WiFi.localIP());
+    glb_wifi_server.begin();
+
+    // ユーザーID
+    File userid_file = SD.open("/id.txt", FILE_READ);
+    if (userid_file) {
+        int c = 0;
+        while (userid_file.available()) {
+            if (c >= 128) break;
+            user_id[c++] = userid_file.read();
+        }
+    }
+    userid_file.close();
 
     M5.Lcd.fillScreen(TFT_WHITE);
 
@@ -135,11 +151,11 @@ void loop()
     static unsigned int count = 0;
 
     //リングバッファ的な
-    if (index >= WAVE_BUFFER)
+    if (++index >= WAVE_BUFFER)
     {
         index = 0;
     }
-    wave[index++] = level;
+    wave[index] = level;
 
     //乗るしかない、このビッグウェーブに
     const unsigned int wall = wave_max(wave) * PEAK_THRESHOLD;
@@ -152,7 +168,7 @@ void loop()
         if (delta > MIN_PEAK_DELTA)
         {
             //選ばれしデータ
-            if (bpm_index >= 10)
+            if (++bpm_index >= 10)
             {
                 bpm_index = 0;
             }
@@ -160,7 +176,7 @@ void loop()
             last_peak = new_peak;
 
             //マイクロ秒→BPM
-            bpm_history[bpm_index++] = 1000000.0 / delta * 60;
+            bpm_history[bpm_index] = 1000000.0 / delta * 60;
         }
     }
 
@@ -185,6 +201,19 @@ void loop()
         }
     }
 
+    // Wi-Fi 受信
+    WiFiClient client = glb_wifi_server.available();
+    if (client) {
+        String concat = "";
+        while (client.connected()) {
+            if (client.available()) {
+                concat += client.read();
+            }
+        }
+        Serial.printf(concat.c_str());
+        client.stop();
+    }
+
     //  ボタン検出
     M5.update();
     if (M5.BtnA.isPressed())
@@ -204,7 +233,7 @@ void loop()
     }
 
     //  ボタンによる画面切り替え
-    if (btnChangeFlg == true)
+    if (btnChangeFlg)
     {
         if (displayMode == 0)
         {
@@ -226,30 +255,18 @@ void loop()
     {
         bpm = bpm_history[5];
 
-        M5.Lcd.fillEllipse(160, 120, 90, 90, forecolor);
-        M5.Lcd.setTextColor(TFT_WHITE, forecolor);
+        M5.Lcd.fillEllipse(160, 120, 90, 90, FORECOLOR);
+        M5.Lcd.setTextColor(TFT_WHITE, FORECOLOR);
         M5.Lcd.setCursor(100, 90);
         M5.Lcd.setTextSize(8);
-        M5.Lcd.printf("%03.0f", bpm_history[5]);
+        M5.Lcd.printf("%03.0f", bpm);
 
-        //  通信エラー対策
-        /*
-        if (glb_wifi_client.connected() == 0)
-        {
-            glb_wifi_client.stop();
-            connectTCP();
-        }
-        if (count < 999){
-            count++;
-        }
-        else{
-            glb_wifi_client.printf("%.0f\n", bpm_n);
-            count = 0;
-        }
-        */
+        connectTCP();
+        glb_wifi_client.printf("{\"userID\": \"%s\", \"BPM\": \"%.0f\"}\n", user_id, bpm);
+        //Serial.printf("{\"userID\": \"%s\", \"BPM\": \"%.0f\"}\n", user_id, bpm); //debug
     }
 
-    Serial.printf("%f\n", wave[index]);
+   //Serial.printf("%d\n", wave[index]); //debug
 }
 
 unsigned int wave_max(unsigned int *arr)
