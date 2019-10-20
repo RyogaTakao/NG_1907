@@ -1,0 +1,15 @@
+{"1234": 
+    {
+        "twitterID": "@shikishijun",
+        "name": "shikishima",
+        "age": 22,
+        "sex": "male"
+    },
+"2345":
+    {
+        "twitterID": "@oishimilk",
+        "name": "ibuki",
+        "age": 21,
+        "sex": "male"
+    }
+}
