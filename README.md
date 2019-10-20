@@ -67,3 +67,7 @@
 * Firebase 心拍データ・ユーザのデータベース，楽曲選定
 
 * 特に力を入れた部分をファイルリンク、またはcommit_idを記載してください（任意）
+   * M5Stackでのアナログデータの処理
+      * [m5stack/](https://github.com/jphacks/NG_1907/tree/master/m5stack)
+      * [m5stack_e/](https://github.com/jphacks/NG_1907/tree/master/m5stack_e)
+      * [m5stack_v3/](https://github.com/jphacks/NG_1907/tree/master/m5stack_v3)
