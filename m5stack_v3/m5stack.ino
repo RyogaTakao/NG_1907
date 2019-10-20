@@ -1,6 +1,5 @@
 #include <M5Stack.h>
 #include <WiFi.h>
-#include <arduinoFFT.h>
 
 //  # 各種設定
 //  ## ネットワーク設定
@@ -30,12 +29,20 @@ bool btnChangeFlg = false;
 uint8_t displayMode = 0; //  0: BPM  1: QR
 
 WiFiClient glb_wifi_client;
-arduinoFFT glb_fft = arduinoFFT();
 
+/*
+  M5Stackの各種セットアップを行います。
+
+  @param なし [なし]: この関数に引数はありません。
+  @return なし [なし]: この関数は戻り値がありません。
+*/
 void setup()
 {
-    Serial.begin(BAUD_RATE);
+    //初期化
     M5.begin();
+    Serial.begin(BAUD_RATE);
+    
+    //スピーカーがうるさいので
     dacWrite(25, 0);
 
     //  画像描画
@@ -43,27 +50,27 @@ void setup()
 
     //  心拍計
     pinMode(PIN_INPUT, INPUT);
-    analogReadResolution(12);
-    analogSetWidth(12);
-    analogSetCycles(8);
-    analogSetSamples(8);
-    analogSetClockDiv(1);
-    analogSetAttenuation(ADC_11db);
-    adcAttachPin(PIN_INPUT);
 
     //  WiFi
-    connectAP();
-    connectTCP();
+    //connectAP();
+    //connectTCP();
 
     M5.Lcd.fillScreen(TFT_WHITE);
 
     Serial.printf("All system ready.\n");
 }
 
+/*
+  WiFiに接続します。
+
+  @param なし [なし]: この関数に引数はありません。
+  @return N/A [bool]: 接続が成功したか否か。
+*/
 bool connectAP(void)
 {
     //  設定
     unsigned int patience = 30;
+
     Serial.printf("Trying to connect to AP");
 
     //  接続
@@ -86,6 +93,12 @@ bool connectAP(void)
     return false;
 }
 
+/*
+  TCP接続を確立します。
+
+  @param なし [なし]: この関数に引数はありません。
+  @return N/A [bool]: 接続が成功したか否か。
+*/
 bool connectTCP(void)
 {
     //設定
@@ -116,7 +129,6 @@ void loop()
     static unsigned int wave[WAVE_BUFFER] = {};
     static unsigned int index = 0;
     static unsigned long last_peak = 0;
-    static float bpm = 0;
     static float bpm_history[10] = {};
     static unsigned int bpm_index = 0;
     static unsigned int count = 0;
@@ -129,7 +141,8 @@ void loop()
     wave[index++] = level;
 
     //乗るしかない、このビッグウェーブに
-    if (level > wave_max(wave) * PEAK_THRESHOLD)
+    const unsigned int wall = wave_max(wave) * PEAK_THRESHOLD;
+    if (wave[index] > wall)
     {
         unsigned long new_peak = micros();
         unsigned long delta = new_peak - last_peak;
@@ -208,19 +221,19 @@ void loop()
         btnChangeFlg = false;
     }
 
-    float bpm_n = roundf(bpm_history[5]);
-
-    if (displayMode == 0 && bpm != bpm_n)
+    if (displayMode == 0)
     {
-        bpm = bpm_n;
         M5.Lcd.fillEllipse(160, 120, 90, 90, forecolor);
         M5.Lcd.setTextColor(TFT_WHITE, forecolor);
         M5.Lcd.setCursor(100, 90);
         M5.Lcd.setTextSize(8);
-        M5.Lcd.printf("%03.0f", bpm);
+        M5.Lcd.printf("%03.0f", bpm_history[5]);
     }
 
+    Serial.printf("%f\n", wave[index]);
+
     //  通信エラー対策
+    /*
     if (glb_wifi_client.connected() == 0)
     {
         glb_wifi_client.stop();
@@ -233,6 +246,8 @@ void loop()
         glb_wifi_client.printf("%.0f\n", bpm_n);
         count = 0;
     }
+    */
+
 }
 
 unsigned int wave_max(unsigned int *arr)
