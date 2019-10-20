@@ -2,7 +2,7 @@
 
 ![EMOVE](logo.jpg)
 
-[![Product Name](3.jpg)](https://www.youtube.com/watch?v=G5rULR53uMk)
+[![Product Name](3.jpg)](https://youtu.be/QGpgYXygGdU)
 
 ## 製品概要
 ### バイタル x エンターテインメント x Tech
