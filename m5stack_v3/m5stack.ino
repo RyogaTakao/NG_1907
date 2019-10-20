@@ -77,7 +77,7 @@ void setup()
     if (userid_file) {
         int c = 0;
         while (userid_file.available()) {
-            if (c++ >= USER_ID_LENGTH) break;
+            if (c >= USER_ID_LENGTH) break;
             user_id[c++] = userid_file.read();
         }
     }
@@ -290,7 +290,7 @@ void loop()
         //Serial.printf("{\"userID\": \"%s\", \"BPM\": \"%.0f\"}\n", user_id, bpm); //debug
     }
 
-   Serial.printf("%d\n", wave[index]); //debug
+   //Serial.printf("%d\n", wave[index]); //debug
 }
 
 /*
