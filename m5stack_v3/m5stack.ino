@@ -16,7 +16,7 @@ uint32_t CONNECTION_WAIT = 1000;
 #define PIN_INPUT 36
 
 //  ## 波形データ
-#define WAVE_BUFFER 128
+#define WAVE_BUFFER 32
 
 //  ## 測定用定数
 #define PEAK_THRESHOLD 0.99   //リングバッファの最大値×これ　より大きい信号を新たなピークとします。
@@ -54,6 +54,13 @@ void setup()
 
     //  心拍計
     pinMode(PIN_INPUT, INPUT);
+    analogReadResolution(12);
+    analogSetWidth(12);
+    analogSetCycles(8);
+    analogSetSamples(8);
+    analogSetClockDiv(1);
+    analogSetAttenuation(ADC_11db);
+    adcAttachPin(PIN_INPUT);
 
     //  WiFi
     connectAP();
@@ -157,7 +164,7 @@ void loop()
     }
     wave[index] = level;
 
-    //乗るしかない、このビッグウェーブに
+    //大きい波
     const unsigned int wall = wave_max(wave) * PEAK_THRESHOLD;
     if (wave[index] > wall)
     {
@@ -242,7 +249,7 @@ void loop()
         else if (displayMode == 1)
         {
                 M5.Lcd.fillScreen(TFT_WHITE);
-                M5.Lcd.qrcode("http://www.m5stack.com");
+                M5.Lcd.qrcode(user_id);
         }
         else if (displayMode == 2)
         {
@@ -266,7 +273,7 @@ void loop()
         //Serial.printf("{\"userID\": \"%s\", \"BPM\": \"%.0f\"}\n", user_id, bpm); //debug
     }
 
-   //Serial.printf("%d\n", wave[index]); //debug
+   Serial.printf("%d\n", wave[index]); //debug
 }
 
 unsigned int wave_max(unsigned int *arr)
