@@ -26,12 +26,13 @@ def ElapsedTime(now):
 def GetExcitementForTime(now):  # 引数は現在の時刻(開始時刻からの経過時間)
     bpmSum = 0
     
-    # UserIDごとに[time, bpm]の形式で保存している二次元配列　(修正)
+    
+    # UserIDごとに[bpm, bpm, bpm, ....]の形式で配列を生成　(修正)
     listDataOfMusicData = []
 
     # 時刻ごとのbpmの平均
     for data in listDataOfMusicData:
-        bpmSum += data[(now - data[0][0]) / 6]
+        bpmSum += data[1]
     bpmAverage = bpmSum / len(listDataOfMusicData)
 
 
@@ -73,45 +74,79 @@ def GetDispersion(listData):
 def LeastSquareMethod(num):
 
     # excitementデータベースから取得した盛り上がり度データ(新しい順)
-    excitementData = []
+    excitementData = [[5, 100], [6, 80], [7, 90]]
 
     return GetCovariance(excitementData[:num]) / GetDispersion(excitementData[:num])
 
+# print(LeastSquareMethod(5))
+
 # 乱数
 def RandomNumber(num):
+    print(num)
     return random.randrange(num)
+
+# 同じ系統の曲を抽出（論理積）
+def musicSiftAnd(data, bpm, genre):
+    musicData = data
+    resultData = []
+    for d in musicData:
+        if d[1] == bpm and d[2] == genre:
+            resultData.append(d)
+    return resultData
+
+# 同じ系統の曲を抽出（論理和）
+def musicSiftOr(data, bpm, genre):
+    musicData = data
+    resultData = []
+    for d in musicData:
+        if d[1] == bpm or d[2] == genre:
+            resultData.append(d)
+    return resultData
+
+
+# テスト用
+nowMusicID = 100
 
 # 選曲関数　(修正あり)
 def SelectMusic(nowMusicID):    # 引数は現在の流れている曲のID
     # 引数のnowMusicIDから現在の曲のbpmを取得する
-    musicBpmType = 1
+    musicData = [[222, 1, "free"], [100, 1, "free"], [333, 2, "hhh"], [4444, 3, "ggg"], [555, -1, "free"], [999, 3, "free"], [888, 2, ""]]
+    nowMusicBpmType = 0
+    nowMusicGenre = ""
+    count = 0
+    for data in musicData:
+        if data[0] == nowMusicID:
+            nowMusicBpmType = data[1]
+            nowMusicGenre = data[2]
+            musicData.pop(count)
+        count += 1
+
 
     # 最近5回分のデータの傾向を演算
     inclination = LeastSquareMethod(5)
+
     # 次の曲のbpmを決定
-    if musicBpmType == 3:
+    if nowMusicBpmType == 3:
+        if inclination < 0:
+            nowMusicBpmType -= 2
+    elif nowMusicBpmType == -1:
         if inclination > 0:
-            musicBpmType += 0
-        else:
-            musicBpmType -= 2
-    elif musicBpmType == -1:
-        if inclination > 0:
-            musicBpmType += 1
-        else:
-            musicBpmType -= 0   
+            nowMusicBpmType += 1  
     else:
-        if inclination > 0:
-            musicBpmType += 1
-        else:
-            musicBpmType -= 0 
+        if inclination > 0.5:
+            nowMusicBpmType += 1
+        elif inclination < 0.5:
+            nowMusicBpmType -= 1 
     
 
     # musicデータベースからmusicBpmTypeとジャンルが一致するmusicDataのlist
-    musicIdListOfMusicBpmType = []
-    return musicIdListOfMusicBpmType[RandomNumber(len(musicIdListOfMusicBpmType))]
+    musicIdListOfMusicBpmType = musicSiftAnd(musicData ,nowMusicBpmType, nowMusicGenre)
+    if len(musicIdListOfMusicBpmType) == 0:
+        musicIdListOfMusicBpmType = musicSiftOr(musicData ,nowMusicBpmType, nowMusicGenre)
+    return musicIdListOfMusicBpmType[RandomNumber(len(musicIdListOfMusicBpmType))][0]
 
 
-
+print(SelectMusic(nowMusicID))
 
 
 
@@ -210,3 +245,8 @@ def SelectMusic(nowMusicID):    # 引数は現在の流れている曲のID
 # print("\n")
 # print(displacementList2)
 # print("\n")
+
+
+# def SelectMusic2(nowMusicID):
+#     music = []
+#     return music[RandomNumber(len(music))]
